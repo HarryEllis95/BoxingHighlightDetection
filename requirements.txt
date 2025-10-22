@@ -1,0 +1,16 @@
+numpy
+pandas
+scikit-learn
+torch
+torchvision
+torchaudio
+opencv-python
+ffmpeg-python
+moviepy
+librosa
+pytube
+streamlit
+plotly
+matplotlib
+tqdm
+requests
