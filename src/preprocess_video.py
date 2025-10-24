@@ -41,3 +41,41 @@ def get_best_stream_within_constraints(yt, max_size_mb=1024):
         if size_mb <= max_size_mb:
             return stream
     return None
+
+def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional[str] = None):
+    """Extract frames from the video at a given frame rate (fps)"""
+    os.makedirs(output_folder, exist_ok=True)
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    interval = int(fps / frame_rate)
+    count = 0
+    frame_id = 0
+
+    while cap.isOpened():
+        ret, frame = cap.read
+        if not ret:
+            break
+        if count % interval == 0:
+            frame_name = os.path.join(output_folder, f"frame_{frame_id:05d}.jpg")
+            cv2.imwrite(frame_name, frame)
+            frame_id += 1
+        count += 1
+    cap.release()
+    print(f"Extracted {frame_id} frames to {output_folder}")
+
+def extract_audio(video_path: str, output_path: Optional[str] = None):
+    """Extract audio track from video using ffmpeg"""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    (
+        ffmpeg.input(video_path).output(output_path, ac=1, ar=16000).overwrite_output().run(quiet=True)
+    )
+    print(f"Audio save to {output_path}")
+
+if __name__ == "__main__":
+    test_url = "https://www.youtube.com/watch?v=2lAe1cqCOXo"  # use a short public video
+    try:
+        video_path = download_youtube_video(test_url)
+        print(f"Test successful. Video saved at: {video_path}")
+        print(f"File size: {os.path.getsize(video_path) / (1024 * 1024):.2f} MB")
+    except Exception as e:
+        print(f"Test failed: {e}")
