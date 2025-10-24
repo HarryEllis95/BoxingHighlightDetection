@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# IDE files
+.idea/
+*.iml
+
+# Data / outputs
+data/
+TestOutput/
+*.csv
+*.pdf
+
+# Streamlit cache
+.streamlit/
