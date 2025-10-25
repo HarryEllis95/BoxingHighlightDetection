@@ -2,8 +2,10 @@ import os
 import tempfile
 from typing import Optional
 import cv2
+import argparse
 from yt_dlp import YoutubeDL
 import ffmpeg
+import shutil
 
 from src.utils import get_max_upload_size
 
@@ -44,15 +46,26 @@ def get_best_stream_within_constraints(yt, max_size_mb=1024):
 
 def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional[str] = None):
     """Extract frames from the video at a given frame rate (fps)"""
-    os.makedirs(output_folder, exist_ok=True)
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    interval = int(fps / frame_rate)
+
+    if not os.path.isfile(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
+    if output_folder is None:
+        output_folder = os.path.join(video_path, "frames")
+    else:
+        os.makedirs(output_folder, exist_ok=True)
+
+    cap = cv2.VideoCapture(video_path)    # open video with OpenCV
+    if not cap.isOpened():
+        raise ValueError(f"Failed to open video file: {video_path}")
+    fps = cap.get(cv2.CAP_PROP_FPS)       # retrieve video's native framerate
+    interval = max(int(fps / frame_rate), 1)
+
     count = 0
     frame_id = 0
-
+    # frame extraction
     while cap.isOpened():
-        ret, frame = cap.read
+        ret, frame = cap.read()
         if not ret:
             break
         if count % interval == 0:
@@ -60,22 +73,81 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
             cv2.imwrite(frame_name, frame)
             frame_id += 1
         count += 1
+
     cap.release()
+    if frame_id == 0:
+        raise RuntimeError("No frames were extracted. Check video content or frame rate settings.")
+
     print(f"Extracted {frame_id} frames to {output_folder}")
+    return output_folder
 
 def extract_audio(video_path: str, output_path: Optional[str] = None):
     """Extract audio track from video using ffmpeg"""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    (
-        ffmpeg.input(video_path).output(output_path, ac=1, ar=16000).overwrite_output().run(quiet=True)
-    )
-    print(f"Audio save to {output_path}")
+    if not os.path.isfile(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+    if output_path is None:
+        temp_dir = tempfile.mkdtemp(prefix="audio_")
+        output_path = os.path.join(temp_dir, "audio.wav")
+    else:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-if __name__ == "__main__":
-    test_url = "https://www.youtube.com/watch?v=2lAe1cqCOXo"  # use a short public video
     try:
-        video_path = download_youtube_video(test_url)
-        print(f"Test successful. Video saved at: {video_path}")
-        print(f"File size: {os.path.getsize(video_path) / (1024 * 1024):.2f} MB")
-    except Exception as e:
-        print(f"Test failed: {e}")
+        (
+            ffmpeg
+            .input(video_path)
+            .output(output_path, ac=1, ar=16000)  # mono and 16khz - standard values
+            .overwrite_output()
+            .run(quiet=True)
+        )
+    except:
+        raise RuntimeError(f"ffmpeg failed to extract audio")
+
+    print(f"Audio save to {output_path}")
+    return output_path
+
+# basic test make sure we can extract
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Extract frames and audio from a video file.")
+    parser.add_argument("video_path", help="Path to the input video file")
+    parser.add_argument("--frame_rate", type=int, default=1, help="Frames per second to extract (default: 1)")
+    parser.add_argument("--output_dir", type=str, default=None, help="Directory to save frames and audio (default: temp)")
+    parser.add_argument("--cleanup", action="store_true", help="Delete output files after extraction")
+
+    args = parser.parse_args()
+
+    video_path = args.video_path
+    frame_rate = args.frame_rate
+    output_dir = args.output_dir
+    cleanup = args.cleanup
+
+    if output_dir is None:
+        output_dir = os.path.dirname(video_path)
+
+    frame_dir = os.path.join(output_dir, "frames")
+    frame_dir = extract_frames(video_path, frame_rate=frame_rate, output_folder=frame_dir)
+    frame_files = sorted([f for f in os.listdir(frame_dir) if f.endswith(".jpg")])
+    print(f"Frame extraction complete: {len(frame_files)} frames saved to {frame_dir}")
+    assert len(frame_files) > 0
+
+    # check first frame to sanity check extraction
+    first_frame_path = os.path.join(frame_dir, frame_files[0])
+    first_frame = cv2.imread(first_frame_path)
+    assert first_frame is not None
+
+    audio_path = os.path.join(output_dir, "audio.wav")
+    audio_path = extract_audio(video_path, output_path=audio_path)
+    assert os.path.exists(audio_path)
+
+    if cleanup:
+        shutil.rmtree(frame_dir)
+        os.remove(audio_path)
+        print(f"🧹 Cleaned up extracted files from {output_dir}")
+
+# if __name__ == "__main__":
+#     test_url = "https://www.youtube.com/watch?v=2lAe1cqCOXo"  # use a short public video
+#     try:
+#         video_path = download_youtube_video(test_url)
+#         print(f"Test successful. Video saved at: {video_path}")
+#         print(f"File size: {os.path.getsize(video_path) / (1024 * 1024):.2f} MB")
+#     except Exception as e:
+#         print(f"Test failed: {e}")
