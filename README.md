@@ -14,3 +14,7 @@ Currently outputs timestamps but I am working an getting an extracted video of c
 - Testing and results via streamlit dashboard
 
  Currently working towards integrating deep learning with PyTorch to enhance the highlight generating pipeline.  
+ 
+ ## Run the App
+ python -m streamlit run streamlit_app/app.py
+
