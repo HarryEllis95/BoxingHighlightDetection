@@ -64,7 +64,7 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
     if not fps or fps <= 0:
         raise ValueError(f"Video reports invalid FPS: {fps}")
 
-    interval = max(int(fps / frame_rate), 1)
+    interval = max(int(round(fps / frame_rate)), 1)
 
     count = 0
     frame_id = 0
@@ -85,7 +85,7 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
         raise RuntimeError("No frames were extracted. Check video content or frame rate settings.")
 
     print(f"Extracted {frame_id} frames to {output_folder}")
-    return output_folder
+    return output_folder, frame_id
 
 def extract_audio(video_path: str, output_path: Optional[str] = None):
     """Extract audio track from video using ffmpeg (mono 16 kHz WAV)"""
