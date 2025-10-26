@@ -51,14 +51,19 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
     if output_folder is None:
-        output_folder = os.path.join(video_path, "frames")
-    else:
-        os.makedirs(output_folder, exist_ok=True)
+        base = os.path.splitext(os.path.basename(video_path))[0]
+        parent = os.path.dirname(video_path) or "."
+        output_folder = os.path.join(parent, f"{base}_frames")
+    os.makedirs(output_folder, exist_ok=True)
 
     cap = cv2.VideoCapture(video_path)    # open video with OpenCV
     if not cap.isOpened():
         raise ValueError(f"Failed to open video file: {video_path}")
+
     fps = cap.get(cv2.CAP_PROP_FPS)       # retrieve video's native framerate
+    if not fps or fps <= 0:
+        raise ValueError(f"Video reports invalid FPS: {fps}")
+
     interval = max(int(fps / frame_rate), 1)
 
     count = 0
@@ -70,7 +75,8 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
             break
         if count % interval == 0:
             frame_name = os.path.join(output_folder, f"frame_{frame_id:05d}.jpg")
-            cv2.imwrite(frame_name, frame)
+            if not cv2.imwrite(frame_name, frame):
+                raise RuntimeError(f"Failed to write frame: {frame_name}")
             frame_id += 1
         count += 1
 
@@ -82,14 +88,16 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
     return output_folder
 
 def extract_audio(video_path: str, output_path: Optional[str] = None):
-    """Extract audio track from video using ffmpeg"""
+    """Extract audio track from video using ffmpeg (mono 16 kHz WAV)"""
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
+
     if output_path is None:
-        temp_dir = tempfile.mkdtemp(prefix="audio_")
-        output_path = os.path.join(temp_dir, "audio.wav")
+        parent = os.path.dirname(video_path) or "."
+        base = os.path.splitext(os.path.basename(video_path))[0]
+        output_path = os.path.join(parent, f"{base}.wav")
     else:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     try:
         (
