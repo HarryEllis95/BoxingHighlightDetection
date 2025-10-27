@@ -18,3 +18,6 @@ Currently outputs timestamps but I am working an getting an extracted video of c
  ## Run the App
  python -m streamlit run streamlit_app/app.py
 
+Note: To use FFmpeg for audio extration it must be installed and accessible via the $PATH environment variable. Without this audio extraction will fall back to moviepy - less robust but still functional for most inputs
+There are a variety of ways to install FFmpeg, such as the official download links, or using your package manager of choice (e.g. sudo apt install ffmpeg on Debian/Ubuntu, brew install ffmpeg on OS X, etc.).
+See https://github.com/kkroening/ffmpeg-python for more information
