@@ -76,6 +76,7 @@ with st.container(border=True):
             new_active = st.session_state.scan_results[rel_options.index(choice)]
             set_active_video(new_active)
 
+
     frame_extraction_rate = st.number_input("Frame extraction rate (FPS)", min_value=1, max_value=60, value=1, step=1)
 
     buttons_disabled = not (st.session_state.active_video_path and os.path.isfile(st.session_state.active_video_path))
