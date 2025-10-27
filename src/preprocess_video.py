@@ -4,7 +4,6 @@ from typing import Optional
 import cv2
 import argparse
 from yt_dlp import YoutubeDL
-import ffmpeg
 import shutil
 
 from src.utils import get_max_upload_size
@@ -99,7 +98,11 @@ def extract_audio(video_path: str, output_path: Optional[str] = None):
     else:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
+    # Try ffmpeg-python first - may fail if user doesn't have ffmpeg configured so fall back to moviepy
     try:
+        import ffmpeg
+        if shutil.which("ffmpeg") is None:
+            raise EnvironmentError("ffmpeg binary not found in PATH")   # needed for it to work
         (
             ffmpeg
             .input(video_path)
@@ -107,11 +110,28 @@ def extract_audio(video_path: str, output_path: Optional[str] = None):
             .overwrite_output()
             .run(quiet=True)
         )
+        print(f"ffmpeg extracted audio saved to {output_path}")
+        extraction_method = "ffmpeg"
+        return output_path, extraction_method
     except:
-        raise RuntimeError(f"ffmpeg failed to extract audio")
+        print(f"ffmpeg extraction failed - Using moviepy instead")
 
-    print(f"Audio save to {output_path}")
-    return output_path
+    # fallback to moviepy
+    try:
+        from moviepy import VideoFileClip
+        clip = VideoFileClip(video_path)
+        clip.audio.write_audiofile(
+            output_path,
+            fps=16000,
+            nbytes=2,
+            codec='pcm_s16le'
+        )
+        print(f"moviepy extracted audio saved to {output_path}")
+        extraction_method = "moviepy"
+        return output_path, extraction_method
+
+    except Exception as e:
+        raise RuntimeError(f"Both ffmpeg and moviepy failed to extract audio: {e}")
 
 # basic test make sure we can extract
 if __name__ == "__main__":
