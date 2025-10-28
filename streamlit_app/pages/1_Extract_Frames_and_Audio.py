@@ -76,6 +76,29 @@ with st.container(border=True):
             new_active = st.session_state.scan_results[rel_options.index(choice)]
             set_active_video(new_active)
 
+    frames_out_default = None
+    audio_out_default = None
+    if st.session_state.active_video_path:
+        parent = os.path.dirname(st.session_state.active_video_path) or "."
+        base = os.path.splitext(os.path.basename(st.session_state.active_video_path))[0]
+        frames_out_default = os.path.join(parent, f"{base}_frames")
+        audio_out_default = os.path.join(parent, f"{base}.wav")
+
+    st.markdown("### Select frames and audio output location - leave blank for default (next to video)")
+    cA, cB = st.columns(2)
+    frames_out_dir = cA.text_input(
+        "Frames output folder",
+        value=frames_out_default or "",
+        key="efa_frames_out_dir",
+    )
+    audio_out_path = cB.text_input(
+        "Audio output file",
+        value=audio_out_default or "",
+        key="efa_audio_out_path",
+    )
+
+    frames_out_dir = frames_out_dir.strip() or None
+    audio_out_path = audio_out_path.strip() or None
 
     frame_extraction_rate = st.number_input("Frame extraction rate (FPS)", min_value=1, max_value=60, value=1, step=1)
 
@@ -89,20 +112,20 @@ with st.container(border=True):
     try:
         if extract_frames_btn:
             with st.spinner("Extracting frames"):
-                folder, count = extract_frames(st.session_state.active_video_path, frame_rate=frame_extraction_rate)
+                folder, count = extract_frames(st.session_state.active_video_path, frame_rate=frame_extraction_rate, output_folder=frames_out_dir)
                 st.session_state.last_frames_result = (folder, count)
             st.success(f"Extracted {count} frames to: {folder}")
 
         if extract_audio_btn:
             with st.spinner("Extracting audio"):
-                audio_path = extract_audio(st.session_state.active_video_path)
+                audio_path = extract_audio(st.session_state.active_video_path, output_path=audio_out_path)
                 st.session_state.last_audio_path = audio_path
             st.success(f"Audio saved to: {audio_path}")
 
         if extract_both_btn:
             with st.spinner("Extracting frames and audio..."):
-                folder, count = extract_frames(st.session_state.active_video_path, frame_rate=frame_extraction_rate)
-                audio_path = extract_audio(st.session_state.active_video_path)
+                folder, count = extract_frames(st.session_state.active_video_path, frame_rate=frame_extraction_rate, output_folder=frames_out_dir)
+                audio_path = extract_audio(st.session_state.active_video_path, output_path=audio_out_path)
                 st.session_state.last_frames_result = (folder, count)
                 st.session_state.last_audio_path = audio_path
             st.success(f"Frames: {count} → {folder}\n\n Audio: {audio_path}")

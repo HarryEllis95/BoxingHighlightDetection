@@ -101,8 +101,6 @@ def extract_audio(video_path: str, output_path: Optional[str] = None):
     # Try ffmpeg-python first - may fail if user doesn't have ffmpeg configured so fall back to moviepy
     try:
         import ffmpeg
-        if shutil.which("ffmpeg") is None:
-            raise EnvironmentError("ffmpeg binary not found in PATH")   # needed for it to work
         (
             ffmpeg
             .input(video_path)
