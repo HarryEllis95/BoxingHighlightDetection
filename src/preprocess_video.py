@@ -83,8 +83,13 @@ def extract_frames(video_path: str, frame_rate: int = 1, output_folder: Optional
     if frame_id == 0:
         raise RuntimeError("No frames were extracted. Check video content or frame rate settings.")
 
+    metadata_path = os.path.join(output_folder, "frame_metadata.txt")
+    with open(metadata_path, "w") as f:
+        f.write(f"fps={fps:.2f}\n")
+
     print(f"Extracted {frame_id} frames to {output_folder}")
     return output_folder, frame_id
+
 
 def extract_audio(video_path: str, output_path: Optional[str] = None):
     """Extract audio track from video using ffmpeg (mono 16 kHz WAV)"""

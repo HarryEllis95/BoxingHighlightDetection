@@ -12,10 +12,7 @@ def compute_motion_features(frame_folder: str, video_path: str, use_optical_flow
       timestamp (s), motion_intensity, optical_flow (optional)
     """
 
-    # get fps from video metadata (for timestamp awareness)
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    cap.release()
+    fps = get_framerate(frame_folder)
 
     frame_files = sorted(
         [os.path.join(frame_folder, f) for f in os.listdir(frame_folder) if f.endswith(".jpg")]
@@ -75,6 +72,23 @@ def compute_motion_features(frame_folder: str, video_path: str, use_optical_flow
 
     df.dropna(inplace=True)
     return df
+
+
+def get_framerate(frame_folder):
+    # Load fps from metadata file
+    metadata_path = os.path.join(frame_folder, "frame_metadata.txt")
+    if not os.path.isfile(metadata_path):
+        raise FileNotFoundError(f"Missing metadata file: {metadata_path}")
+    with open(metadata_path, "r") as f:
+        line = f.readline().strip()
+        if not line.startswith("fps="):
+            raise ValueError(f"Invalid metadata format: {line}")
+        try:
+            fps = float(line.split("=")[1])
+        except ValueError:
+            raise ValueError(f"Could not parse FPS value from metadata: {line}")
+    return fps
+
 
 def compute_audio_features(audio_path: str):
     y, sr = librosa.load(audio_path)

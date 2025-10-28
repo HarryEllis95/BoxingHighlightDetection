@@ -85,13 +85,13 @@ with st.container(border=True):
         audio_out_default = os.path.join(parent, f"{base}.wav")
 
     st.markdown("### Select frames and audio output location - leave blank for default (next to video)")
-    cA, cB = st.columns(2)
-    frames_out_dir = cA.text_input(
+    frame_col, audio_col = st.columns(2)
+    frames_out_dir = frame_col.text_input(
         "Frames output folder",
         value=frames_out_default or "",
         key="efa_frames_out_dir",
     )
-    audio_out_path = cB.text_input(
+    audio_out_path = audio_col.text_input(
         "Audio output file",
         value=audio_out_default or "",
         key="efa_audio_out_path",
