@@ -116,8 +116,8 @@ def extract_audio(video_path: str, output_path: Optional[str] = None):
         print(f"ffmpeg extracted audio saved to {output_path}")
         extraction_method = "ffmpeg"
         return output_path, extraction_method
-    except:
-        print(f"ffmpeg extraction failed - Using moviepy instead")
+    except Exception as e:
+        print(f"ffmpeg extraction failed - Using moviepy instead: {e}")
 
     # fallback to moviepy
     try:
