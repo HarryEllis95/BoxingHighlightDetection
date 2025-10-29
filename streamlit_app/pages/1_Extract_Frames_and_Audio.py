@@ -118,7 +118,7 @@ with st.container(border=True):
 
         if extract_audio_btn:
             with st.spinner("Extracting audio"):
-                audio_path = extract_audio(st.session_state.active_video_path, output_path=audio_out_path)
+                audio_path, extraction_method = extract_audio(st.session_state.active_video_path, output_path=audio_out_path)
                 st.session_state.last_audio_path = audio_path
             st.success(f"Audio saved to: {audio_path}")
 
@@ -161,5 +161,3 @@ with st.container(border=True):
                 st.audio(f.read(), format="audio/wav")
         except Exception as e:
             st.info(f"(Could not preview audio: {e})")
-
-    st.caption("ffmpeg must be installed and on PATH for audio extraction.")
