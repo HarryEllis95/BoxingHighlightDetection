@@ -157,11 +157,33 @@ def farneback_flow(prev_gray: np.ndarray, gray: np.ndarray) -> Tuple[np.ndarray,
     mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     return mag, ang
 
-def compute_audio_features(audio_path: str):
+def compute_audio_features(audio_path: str) -> pd.DataFrame:
+    """
+    Compute a compact, high-signal set of audio features suitable for scikit-learn models
+    to detect boxing highlights.
+
+    Output columns:
+      - timestamp (s)   : time of each audio frame
+      - rms             : root mean square energy (loudness)
+      - zcr             : zero crossing rate (noisiness)
+      - centroid        : spectral centroid (brightness)
+      - bandwidth       : spectral bandwidth (frequency spread)
+      - mfcc1           : first MFCC coefficient (timbre / tone)
+    """
     y, sr = librosa.load(audio_path)
     rms = librosa.feature.rms(y=y)[0]
     zcr = librosa.feature.zero_crossing_rate(y)[0]
+    centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+    bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)[0]
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=1)[0]
     timestamps = librosa.times_like(rms, sr=sr)
-    return pd.DataFrame({"timestamp": timestamps, "rms": rms, "zcr": zcr})
+    return pd.DataFrame({
+        "timestamp": timestamps,
+        "rms": rms,
+        "zcr": zcr,
+        "centroid": centroid,
+        "bandwidth": bandwidth,
+        "mfcc1": mfcc,
+    })
 
 # if __name__ == "__main__":

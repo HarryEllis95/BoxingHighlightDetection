@@ -21,3 +21,5 @@ TestOutput/
 
 # Streamlit cache
 .streamlit/
+
+ffmpeg/
