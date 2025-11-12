@@ -17,23 +17,23 @@ st.markdown(
     """
 The purpose of this project is to utilise Machine Learning to find and extract highlight moments (knockdowns, big exchanges, KOs) in full-length boxing videos.
 This involves extraction of features such as:
-- **Visual motion** from video frames (e.g., per-frame or per-second motion/embedding features)
-- **Audio energy & reactions** from the crowd/commentary WAV track  
+- **Visual motion** from video frames
+- **Audio energy & reactions**
 
-Currently a light weight **Scikit-learn model** is trained on those features to predict a per-second highlight probability.  
-Current output is **timestamps** (WIP: automatic highlight clip export).
+Currently a model is trained on those features to predict a per-second highlight probability.  
+Current output is **timestamps** of predicted highlights.
 """
 )
 
-st.markdown("### How to use")
+st.markdown("### How to Train and Use Model")
 st.markdown(
     """
-1. **Overview (this page)** – read summary and see live session status (below).  
-2. **Extract Frames & Audio** – point to a local video (no web uploads currently), then:
+1. **Extract Frames & Audio** – point to a local video (no web uploads currently), then:
    - Extract **frames** at a chosen FPS  
    - Extract **mono 16 kHz WAV** audio (using ffmpeg if downloaded, otherwise moviepy - see readme)
 3. **Extract Features** – compute features from frames and/or audio and save.  
-4. **Train Model** – feed features into model - saved locally.  
+4. **Generate Labeled Data** – See Create Highlight Labels page 
+4. **Train Model** – feed features into model - save trained model.  
 5. **Run Inference** – apply the trained model to any video; get **highlight timestamps** (and later, exported clips).
 """)
 
@@ -42,7 +42,6 @@ st.markdown(
     """
 - Optimized for **local big files**: everything runs on file paths; no browser uploads.  
 - Outputs (frames, WAV, features, model) are saved **next to your video** by default.  
-- You can swap in your own feature extractors or model types without changing the UI flow.
 """
 )
 
