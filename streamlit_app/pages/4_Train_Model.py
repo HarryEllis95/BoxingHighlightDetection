@@ -9,52 +9,64 @@ from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from src.train_model import train_highlight_model
 
 st.set_page_config(page_title="Train Highlight Model", layout="wide")
-st.title("Train Boxing Highlight Model (currently scikit-learn)")
+st.title("Train Boxing Highlight Model")
 
 
 st.header("Inputs")
 visual_csv_path = st.text_input("Visual features CSV Path", "", width=500)
 audio_csv_path = st.text_input("Audio features CSV Path", "", width=500)
 labels_csv_path = st.text_input("Labels CSV Path", "", width=500)
-rolling_seconds = st.number_input("Rolling window (s) for temporal features", min_value=0, max_value=30, value=3, step=1, width = 500)
 test_size = st.slider("Test size", 0.05, 0.4, 0.20, 0.05)
-random_state = st.number_input("Random seed", min_value=0, value=42, step=1, width=500)
+random_state = st.number_input("Random seed", min_value=0, value=10, step=1, width=500)
+time_based = st.checkbox("Use time-based chronological split (no random shuffle)", value=False)
+do_calibrate = st.checkbox("Prefit calibration (recommended)", value=True)
 
 train_btn = st.button("Train Model")
 
-def _must_exist(path: str, label: str):
+def must_exist(path: str, label: str):
     if not path or not os.path.isfile(path):
         st.error(f"{label} not found at: {path}")
         st.stop()
 
 if train_btn:
-    _must_exist(visual_csv_path, "Visual features CSV")
-    _must_exist(audio_csv_path, "Audio features CSV")
-    _must_exist(labels_csv_path, "Labels CSV")
+    must_exist(visual_csv_path, "Visual features CSV")
+    must_exist(audio_csv_path, "Audio features CSV")
+    must_exist(labels_csv_path, "Labels CSV")
 
     with st.spinner("Training the model…"):
         pipeline, results = train_highlight_model(
             visual_features_csv=visual_csv_path,
             audio_features_csv=audio_csv_path,
             labels_csv=labels_csv_path,
-            rolling_seconds=rolling_seconds,
             test_size=test_size,
-            random_state=random_state
+            random_state=int(random_state),
+            time_based_split=time_based,
+            do_calibrate=do_calibrate
         )
 
-    st.success("Training complete ✅")
+    st.success("Training complete")
 
     # metrics overview
+    test_roc = results.get("test_roc_auc", np.nan)
+    test_pr = results.get("test_pr_auc", np.nan)
+    chosen_threshold = results.get("threshold", 0.5)
+    val_f1 = results.get("val_f1", np.nan)
+
     colA, colB, colC, colD = st.columns(4)
-    colA.metric("ROC-AUC", f"{results['roc_auc']:.3f}")
-    colB.metric("PR-AUC (Avg Precision)", f"{results['pr_auc']:.3f}")
-    colC.metric("Best F1 threshold", f"{results['threshold']:.2f}")
-    colD.metric("F1 @ threshold", f"{results['f1']:.3f}")
+    colA.metric("ROC-AUC (test)", f"{float(test_roc):.3f}")
+    colB.metric("PR-AUC (Avg Precision test)", f"{float(test_pr):.3f}")
+    colC.metric("Best F1 threshold (val)", f"{float(chosen_threshold):.2f}")
+    colD.metric("Val F1 @ threshold", f"{float(val_f1):.3f}")
 
-    st.subheader("Classification Report @ chosen threshold")
-    st.code(results["classification_report"], language="text")
+    st.subheader("Classification Report @ chosen threshold (test)")
+    st.code(results.get("test_classification_report", "No classification report available"), language="text")
 
-    test_df: pd.DataFrame = results["test_predictions"].copy()
+    test_df: pd.DataFrame = results.get("test_predictions", pd.DataFrame()).copy()
+
+    if test_df.empty:
+        st.warning("No test predictions available — check your data and splits.")
+        st.stop()
+
     # if timestamps were unavailable during split, build an index-based timestamp
     if "timestamp" not in test_df.columns or test_df["timestamp"].isna().all():
         test_df["timestamp"] = np.arange(len(test_df), dtype=float)
@@ -67,11 +79,22 @@ if train_btn:
         value=float(results["threshold"]), step=0.05
     )
 
+    test_df = test_df.sort_values("timestamp").reset_index(drop=True)
+
+    st.subheader("Explore predicted highlight probabilities")
+    threshold = st.slider(
+        "Probability threshold", min_value=0.05, max_value=0.95,
+        value=float(chosen_threshold), step=0.01
+    )
+
     test_df["y_pred_thr"] = (test_df["y_proba"] >= threshold).astype(int)
 
     # confusion matrix at current threshold
-    cm = confusion_matrix(test_df["y_true"], test_df["y_pred_thr"], labels=[0, 1])
-    tn, fp, fn, tp = cm.ravel()
+    try:
+        cm = confusion_matrix(test_df["y_true"], test_df["y_pred_thr"], labels=[0, 1])
+        tn, fp, fn, tp = cm.ravel()
+    except Exception:
+        tn = fp = fn = tp = 0
     p, r, f1, _ = precision_recall_fscore_support(test_df["y_true"], test_df["y_pred_thr"],
                                                   average="binary", zero_division=0)
 
@@ -128,7 +151,7 @@ if train_btn:
 
     # download predictions
     st.download_button(
-        "⬇️ Download test predictions CSV",
+        "⬇Download test predictions CSV",
         data=test_df.to_csv(index=False).encode("utf-8"),
         file_name="test_predictions.csv",
         mime="text/csv"
@@ -136,7 +159,7 @@ if train_btn:
 
     st.subheader("Save trained model")
     model_name = st.text_input("Model output path", "models/highlight_detector.pkl")
-    if st.button("💾 Save model"):
+    if st.button("Save model"):
         os.makedirs(os.path.dirname(model_name), exist_ok=True)
         joblib.dump(pipeline, model_name)
         st.success(f"Model saved to {model_name}")
